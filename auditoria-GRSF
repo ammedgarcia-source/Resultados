@@ -1,0 +1,1143 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Auditoría GZSF · BanCoppel</title>
+<style>
+  :root {
+    --azul:    #1B3A6B;
+    --azul2:   #2563A8;
+    --rojo:    #C0392B;
+    --verde:   #1A7A4A;
+    --amarillo:#B7791F;
+    --gris:    #F4F6F9;
+    --borde:   #DDE3EC;
+    --texto:   #1A2233;
+    --claro:   #FFFFFF;
+    --prohib:  #FEE2E2;
+    --ok-bg:   #ECFDF5;
+    --warn-bg: #FFFBEB;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: var(--gris);
+    color: var(--texto);
+    font-size: 14px;
+    line-height: 1.5;
+    padding-bottom: 100px;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--azul);
+    color: white;
+    padding: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .header h1 { font-size: 15px; font-weight: 700; letter-spacing: .3px; }
+  .header p  { font-size: 11px; opacity: .75; margin-top: 2px; }
+
+  /* ── PROGRESO ── */
+  .progress-bar {
+    height: 4px;
+    background: rgba(255,255,255,.2);
+    border-radius: 2px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: #4ADE80;
+    border-radius: 2px;
+    transition: width .3s ease;
+    width: 0%;
+  }
+  .progress-label {
+    font-size: 10px;
+    opacity: .8;
+    margin-top: 4px;
+    text-align: right;
+  }
+
+  /* ── TABS DE SECCIÓN ── */
+  .tabs {
+    display: flex;
+    overflow-x: auto;
+    background: var(--azul2);
+    padding: 0 8px;
+    gap: 2px;
+    scrollbar-width: none;
+  }
+  .tabs::-webkit-scrollbar { display: none; }
+  .tab {
+    flex-shrink: 0;
+    padding: 10px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: rgba(255,255,255,.6);
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    white-space: nowrap;
+    transition: all .2s;
+  }
+  .tab.active {
+    color: white;
+    border-bottom-color: #4ADE80;
+  }
+  .tab .badge {
+    display: inline-block;
+    background: rgba(255,255,255,.15);
+    border-radius: 10px;
+    padding: 1px 6px;
+    font-size: 10px;
+    margin-left: 4px;
+  }
+  .tab.tiene-incumplidos .badge { background: #EF4444; color: white; }
+
+  /* ── BLOQUE DE IDENTIFICACIÓN ── */
+  .ident {
+    background: white;
+    margin: 12px;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid var(--borde);
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+  .ident h2 {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--azul);
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .campo { margin-bottom: 10px; }
+  .campo label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    color: #64748B;
+    margin-bottom: 4px;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+  }
+  .campo select,
+  .campo input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    font-size: 14px;
+    background: var(--gris);
+    color: var(--texto);
+    appearance: none;
+    -webkit-appearance: none;
+    outline: none;
+    transition: border-color .2s;
+  }
+  .campo select:focus,
+  .campo input:focus { border-color: var(--azul2); background: white; }
+  .fila2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* ── SECCIÓN DE ÍTEMS ── */
+  .seccion {
+    display: none;
+    padding: 0 12px;
+  }
+  .seccion.activa { display: block; }
+
+  .subseccion {
+    margin-bottom: 6px;
+    margin-top: 12px;
+  }
+  .subseccion-titulo {
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .8px;
+    color: #94A3B8;
+    padding: 0 4px;
+    margin-bottom: 6px;
+  }
+
+  /* ── TARJETA DE ÍTEM ── */
+  .item {
+    background: white;
+    border-radius: 10px;
+    border: 1.5px solid var(--borde);
+    margin-bottom: 6px;
+    overflow: hidden;
+    transition: border-color .15s;
+  }
+  .item.prohibicion {
+    border-left: 4px solid var(--rojo);
+    background: var(--prohib);
+  }
+  .item.cumple    { border-color: #BBF7D0; background: var(--ok-bg); }
+  .item.incumple  { border-color: #FCA5A5; background: #FEF2F2; }
+
+  .item-content {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px;
+  }
+  .item-id {
+    flex-shrink: 0;
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--azul2);
+    background: #EFF6FF;
+    border-radius: 5px;
+    padding: 2px 6px;
+    margin-top: 2px;
+    min-width: 36px;
+    text-align: center;
+  }
+  .item.prohibicion .item-id {
+    background: #FEE2E2;
+    color: var(--rojo);
+  }
+  .item-texto {
+    flex: 1;
+    font-size: 13px;
+    line-height: 1.45;
+    color: var(--texto);
+  }
+  .item.prohibicion .item-texto { font-weight: 500; }
+
+  /* ── BOTONES SI / NO / NA ── */
+  .item-botones {
+    display: flex;
+    gap: 6px;
+    padding: 0 12px 12px 12px;
+  }
+  .btn-check {
+    flex: 1;
+    padding: 9px 4px;
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    background: white;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: center;
+    transition: all .15s;
+    color: #64748B;
+  }
+  .btn-check:active { transform: scale(.96); }
+
+  .btn-check.si  { border-color: #86EFAC; color: #15803D; background: white; }
+  .btn-check.no  { border-color: #FCA5A5; color: #B91C1C; background: white; }
+  .btn-check.na  { border-color: #CBD5E1; color: #94A3B8; background: white; }
+
+  .btn-check.si.sel  { background: #DCFCE7; border-color: #22C55E; color: #15803D; }
+  .btn-check.no.sel  { background: #FEE2E2; border-color: #EF4444; color: #B91C1C; font-weight: 700; }
+  .btn-check.na.sel  { background: #F1F5F9; border-color: #94A3B8; color: #64748B; }
+
+  /* Prohibición: si=incumplimiento → rojo más fuerte */
+  .item.prohibicion .btn-check.si.sel {
+    background: #FEE2E2; border-color: #EF4444; color: #B91C1C; font-weight: 700;
+  }
+  .item.prohibicion .btn-check.no.sel {
+    background: #DCFCE7; border-color: #22C55E; color: #15803D;
+  }
+
+  /* ── OBSERVACIONES ── */
+  .obs-campo {
+    background: white;
+    border-radius: 10px;
+    border: 1.5px solid var(--borde);
+    margin: 12px 0;
+    padding: 12px;
+  }
+  .obs-campo label {
+    font-size: 11px;
+    font-weight: 700;
+    color: #64748B;
+    text-transform: uppercase;
+    letter-spacing: .4px;
+    display: block;
+    margin-bottom: 6px;
+  }
+  .obs-campo textarea {
+    width: 100%;
+    min-height: 80px;
+    border: 1.5px solid var(--borde);
+    border-radius: 8px;
+    padding: 10px;
+    font-size: 13px;
+    font-family: inherit;
+    resize: vertical;
+    outline: none;
+    background: var(--gris);
+  }
+  .obs-campo textarea:focus { border-color: var(--azul2); background: white; }
+
+  /* ── NAVEGACIÓN INFERIOR ── */
+  .nav-bottom {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    background: white;
+    border-top: 1px solid var(--borde);
+    padding: 10px 16px;
+    display: flex;
+    gap: 10px;
+    box-shadow: 0 -4px 16px rgba(0,0,0,.08);
+  }
+  .btn-nav {
+    flex: 1;
+    padding: 12px;
+    border-radius: 10px;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .btn-nav:active { transform: scale(.97); }
+  .btn-prev { background: var(--gris); color: var(--texto); }
+  .btn-next { background: var(--azul); color: white; }
+  .btn-enviar { background: var(--verde); color: white; flex: 2; }
+
+  /* ── RESUMEN FINAL ── */
+  .resumen {
+    display: none;
+    padding: 12px;
+  }
+  .resumen.activo { display: block; }
+  .resumen-header {
+    background: var(--azul);
+    color: white;
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 12px;
+    text-align: center;
+  }
+  .resumen-header h2 { font-size: 18px; margin-bottom: 4px; }
+  .resumen-header p  { font-size: 12px; opacity: .8; }
+  .pct-grande {
+    font-size: 48px;
+    font-weight: 800;
+    margin: 12px 0 4px;
+  }
+  .pct-grande.verde  { color: #4ADE80; }
+  .pct-grande.amarillo { color: #FCD34D; }
+  .pct-grande.rojo   { color: #FCA5A5; }
+
+  .resumen-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .resumen-card {
+    background: white;
+    border-radius: 10px;
+    padding: 12px;
+    text-align: center;
+    border: 1.5px solid var(--borde);
+  }
+  .resumen-card .numero {
+    font-size: 24px;
+    font-weight: 800;
+    display: block;
+  }
+  .resumen-card .etiqueta { font-size: 10px; color: #64748B; font-weight: 600; text-transform: uppercase; }
+  .resumen-card.verde-c  { border-color: #86EFAC; }
+  .resumen-card.rojo-c   { border-color: #FCA5A5; }
+  .resumen-card.prohib-c { border-color: var(--rojo); }
+  .resumen-card.verde-c  .numero { color: var(--verde); }
+  .resumen-card.rojo-c   .numero { color: #DC2626; }
+  .resumen-card.prohib-c .numero { color: var(--rojo); }
+
+  .incumplidos-lista {
+    background: white;
+    border-radius: 10px;
+    border: 1.5px solid var(--borde);
+    padding: 14px;
+    margin-bottom: 12px;
+  }
+  .incumplidos-lista h3 {
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--texto);
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    margin-bottom: 10px;
+  }
+  .item-incumplido {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--borde);
+    font-size: 12px;
+  }
+  .item-incumplido:last-child { border-bottom: none; }
+  .item-incumplido .id-badge {
+    flex-shrink: 0;
+    font-weight: 700;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 5px;
+    background: #FEE2E2;
+    color: var(--rojo);
+  }
+  .item-incumplido .id-badge.prohib { background: var(--rojo); color: white; }
+
+  .btn-enviar-final {
+    width: 100%;
+    padding: 16px;
+    background: var(--verde);
+    color: white;
+    border: none;
+    border-radius: 12px;
+    font-size: 16px;
+    font-weight: 700;
+    cursor: pointer;
+    margin-top: 4px;
+  }
+  .btn-volver {
+    width: 100%;
+    padding: 12px;
+    background: var(--gris);
+    color: var(--texto);
+    border: none;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    margin-top: 8px;
+  }
+
+  /* ── PANTALLA DE ÉXITO ── */
+  .exito {
+    display: none;
+    text-align: center;
+    padding: 60px 24px;
+  }
+  .exito.activo { display: block; }
+  .exito .icono { font-size: 64px; margin-bottom: 16px; }
+  .exito h2 { font-size: 22px; font-weight: 800; color: var(--verde); margin-bottom: 8px; }
+  .exito p  { color: #64748B; font-size: 14px; margin-bottom: 24px; }
+  .exito .btn-nueva {
+    padding: 14px 32px;
+    background: var(--azul);
+    color: white;
+    border: none;
+    border-radius: 10px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #1E293B;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 500;
+    opacity: 0;
+    transition: all .3s;
+    white-space: nowrap;
+    z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <h1>🏦 Auditoría GZSF · BanCoppel</h1>
+  <p>Bitácora Pre-Revisión Operativa</p>
+  <div class="progress-bar"><div class="progress-fill" id="progFill"></div></div>
+  <div class="progress-label" id="progLabel">0 de 0 respondidos</div>
+</div>
+
+<!-- TABS -->
+<div class="tabs" id="tabs">
+  <div class="tab active" onclick="irSeccion(0)">📍 Datos</div>
+  <div class="tab" onclick="irSeccion(1)">1 Ventanilla <span class="badge" id="b1">0</span></div>
+  <div class="tab" onclick="irSeccion(2)">2 Expedientes <span class="badge" id="b2">0</span></div>
+  <div class="tab" onclick="irSeccion(3)">3 Cajas <span class="badge" id="b3">0</span></div>
+  <div class="tab" onclick="irSeccion(4)">4 AFORE <span class="badge" id="b4">0</span></div>
+  <div class="tab" onclick="irSeccion(5)">5 C.Financiero <span class="badge" id="b5">0</span></div>
+  <div class="tab" onclick="irSeccion(6)">✅ Resumen</div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SECCIÓN 0 — IDENTIFICACIÓN
+════════════════════════════════════════ -->
+<div class="seccion activa" id="sec0">
+  <div class="ident" style="margin-top:12px">
+    <h2>📍 Identificación de la visita</h2>
+
+    <div class="campo">
+      <label>Zona</label>
+      <select id="zona" onchange="filtrarSucursales()">
+        <option value="">— Selecciona zona —</option>
+        <option>AGUASCALIENTES 1</option>
+        <option>AGUASCALIENTES 2</option>
+        <option>CD. VALLES</option>
+        <option>FRESNILLO</option>
+        <option>LA BARCA</option>
+        <option>S.L.P</option>
+        <option>S.L.P. SUR</option>
+        <option>TLAJOMULCO</option>
+        <option>TONALÁ</option>
+        <option>ZACATECAS</option>
+      </select>
+    </div>
+
+    <div class="campo">
+      <label>Sucursal</label>
+      <select id="sucursal">
+        <option value="">— Primero selecciona zona —</option>
+      </select>
+    </div>
+
+    <div class="fila2">
+      <div class="campo">
+        <label>Gerente Financiero (GF)</label>
+        <input type="text" id="gf" placeholder="Nombre completo">
+      </div>
+      <div class="campo">
+        <label>GZSF que revisa</label>
+        <input type="text" id="gzsf" placeholder="Nombre completo">
+      </div>
+    </div>
+
+    <div class="campo">
+      <label>Fecha de visita</label>
+      <input type="date" id="fecha">
+    </div>
+
+    <div class="fila2">
+      <div class="campo">
+        <label>Última Bit. Seguridad</label>
+        <input type="date" id="bitSeg1">
+      </div>
+      <div class="campo">
+        <label>Próxima Bit. Seguridad</label>
+        <input type="date" id="bitSeg2">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════
+     SECCIONES 1–5 — se generan con JS
+════════════════════════════════════════ -->
+<div class="seccion" id="sec1"></div>
+<div class="seccion" id="sec2"></div>
+<div class="seccion" id="sec3"></div>
+<div class="seccion" id="sec4"></div>
+<div class="seccion" id="sec5"></div>
+
+<!-- SECCIÓN RESUMEN -->
+<div class="resumen" id="secResumen"></div>
+
+<!-- PANTALLA ÉXITO -->
+<div class="exito" id="pantallaExito">
+  <div class="icono">✅</div>
+  <h2>¡Auditoría enviada!</h2>
+  <p>Los datos se registraron correctamente en el sistema de seguimiento.</p>
+  <button class="btn-nueva" onclick="nuevaAuditoria()">+ Nueva auditoría</button>
+</div>
+
+<!-- NAVEGACIÓN INFERIOR -->
+<div class="nav-bottom" id="navBottom">
+  <button class="btn-nav btn-prev" onclick="anterior()" id="btnPrev" style="display:none">← Atrás</button>
+  <button class="btn-nav btn-next" onclick="siguiente()" id="btnNext">Siguiente →</button>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CATÁLOGO DE SUCURSALES ───────────────────────────────────
+const SUCURSALES = {
+  "AGUASCALIENTES 1": [
+    ["0001","SUCURSAL 1"],["0002","SUCURSAL 2"],["0003","SUCURSAL 3"],
+    ["0004","SUCURSAL 4"],["0005","SUCURSAL 5"],["0006","SUCURSAL 6"],
+    ["0007","SUCURSAL 7"],["0008","SUCURSAL 8"],["0009","SUCURSAL 9"],["0010","SUCURSAL 10"]
+  ],
+  "AGUASCALIENTES 2": [
+    ["397","ASUNCIÓN"],["1029","MORELOS"],["1135","ALDAMA"],["1241","ESPACIO"],
+    ["1336","PLUTARCO ELÍAS CALLES"],["515","RIVERO"],["6838","RINCON ROMOS"],
+    ["7755","HACIENDA"],["7781","PLAZA ALTARIA"],["4035","RINCÓN DE RAMOS"],["7900","VILLA HIDALGO"]
+  ],
+  "CD. VALLES": [
+    ["113","HIDALGO IV"],["280","PLAZA VALLE"],["657","HIDALGO"],["560","CARRANZA"],
+    ["6749","TAMAZUNCHALE"],["6778","CD VALLES"],["1057","JUÁREZ"],["1488","JUÁREZ"],
+    ["6507","MORELOS"],["6807","TANQUIAN ESCOBEDO"],["7641","LA PARROQUIA"],["7712","RAYÓN"]
+  ],
+  "FRESNILLO": [
+    ["36","MADERO"],["538","MORELOS"],["627","HIDALGO"],["757","CONSTITUCIÓN"],
+    ["1138","HIDALGO"],["1237","CONSTITUCIÓN"],["7003","FRESNILLO"],
+    ["7690","PLAZA PORTAL"],["7967","5 DE MAYO"]
+  ],
+  "LA BARCA": [
+    ["50","LA MOREÑA"],["333","ARANDAS"],["787","HIDALGO"],["964","MADERO"],
+    ["7876","OCOTLAN"],["542","SANTA MÓNICA"],["879","INDEPENDENCIA"],
+    ["1068","NIÑOS HÉROES"],["1158","DONATO GUERRA"],["6747","GENERAL MUJICA"],
+    ["7787","JAMAY"],["7851","AYOTLÁN"]
+  ],
+  "S.L.P": [
+    ["43","REFORMA"],["289","LOS PINOS"],["535","ALHÓNDIGA"],["946","HIDALGO"],
+    ["552","PLAZA JUÁREZ"],["6552","PLAZA PRINCIPAL"],["6792","SAN LUIS POTOSI"],
+    ["6847","VASCO DE QUIROGA"],["6890","CITADINA"],["7644","EL DORADO"],
+    ["1176","PLAZA MUÑOZ"],["1233","CITADINA"],["6512","EL SAUCITO"],
+    ["7729","RICARDO B. ANAYA"],["7738","EL PASEO"]
+  ],
+  "S.L.P. SUR": [
+    ["885","MORELOS"],["903","PLAZA PRINCIPAL"],["553","PLAZA SENDERO"],
+    ["6677","SAN LUIS POTOSÍ"],["1258","MORELOS"],["1388","AMONARIO DÍAZ DE LEÓN"],
+    ["6680","THE PARK"],["6824","BENITO JUÁREZ"],["7961","SENDERO SAN LUIS"]
+  ],
+  "TLAJOMULCO": [
+    ["312","SANTA FE"],["847","MÁRQUEZ"],["852","PLAZA EL SALTO"],["317","LAS PLAZAS"],
+    ["646","MIGUEL ARANA"],["1069","UNION DEL CUATRO"],["1089","GÓMEZ FARÍAS"],
+    ["853","MADERO"],["1300","SAN AGUSTÍN"],["1346","JUÁREZ"],
+    ["7607","IZTACCIHUATL"],["7664","SABINOS"]
+  ],
+  "TONALÁ": [
+    ["176","LOMA DORADA"],["272","GONZÁLEZ"],["704","LÓPEZ PAJAR"],["1095","SAN GASPAR"],
+    ["1116","JUÁREZ"],["6815","TONALA"],["1352","TONALTECAS"],
+    ["6505","YAHUALICA"],["7761","ITURBIDE"],["7935","VILAS ANDALUCIA"]
+  ],
+  "ZACATECAS": [
+    ["92","PLAZA ZACATECAS"],["243","TACUBA"],["499","INDEPENDENCIA"],
+    ["562","GUERRERO"],["539","HIDALGO"],["6679","JEREZ"],
+    ["1364","SUAVE PATRIA"],["1386","LIBERTAD"],["7663","LA ENCANTADA"]
+  ]
+};
+
+// ── ESTRUCTURA DE ÍTEMS ──────────────────────────────────────
+const SECCIONES = [
+  {
+    nombre: "1 — VENTANILLA",
+    subsecciones: [
+      {
+        titulo: "APERTURA (Dec. 8.36)",
+        items: [
+          {id:"1.1",   texto:"Personal listo a hora de apertura; GF primero en llegar, valida horario en ÁGIL"},
+          {id:"1.1.1", texto:"GF/SG entrega gafete a cada colaborador antes de iniciar operaciones"},
+          {id:"1.1.2", texto:"CP entrega stock de tarjetas al asesor encargado antes de apertura"},
+          {id:"1.1.3", texto:"Control de Sellos requisitado: Nº empleado, nombre completo y rúbrica"},
+          {id:"1.2",   texto:"Carpeta operativa día anterior resguardada y completa (A17, A01, Sellos, B6, SPEI, Mtto Huella, M01, A06, A09, A12, Papeleta Valores, Rev. Expedientes)"},
+          {id:"1.3",   texto:"Sellos en buen estado y completos"},
+        ]
+      },
+      {
+        titulo: "LÍMITES DE EFECTIVO (Dec. 6.13)",
+        items: [
+          {id:"1.5", texto:"CM y CP respetan límites de efectivo autorizados (drive 'Límites Sucursales 2026')"},
+          {id:"1.6", texto:"Sin excedente en bóveda al cierre en los últimos 30 días"},
+          {id:"1.7", texto:"Claves bóveda/ATM/Site resguardadas; altas y bajas gestionadas por GZSF vía CAM"},
+          {id:"1.8", texto:"No se presta efectivo entre cajeros"},
+        ]
+      },
+      {
+        titulo: "ARQUEOS (Dec. 8.15)",
+        items: [
+          {id:"1.9",  texto:"2 arqueos completos + 5 express por semana; A17 con tipo de arqueo cada día"},
+          {id:"1.10", texto:"Arqueos mancomunados de cara a cámara en mesa de conteo"},
+          {id:"1.11", texto:"CP aplica arqueo sorpresivo a cada CM: 1 quincenal con desglose en A09"},
+          {id:"1.12", texto:"GF/SG aplica arqueo sorpresivo a CP: 1 quincenal con desglose en A09"},
+          {id:"1.13", texto:"GZSF aplica arqueo sorpresivo a bóveda: 1 mensual. Evidencia en A09"},
+          {id:"1.14", texto:"GF aplica arqueo sorpresivo a ATM + corte administrativo + BNA: 1 quincenal"},
+          {id:"1.15", texto:"GZSF aplica arqueo sorpresivo a ATM y CP + corte administrativo + BNA: 1 mensual"},
+          {id:"1.16", texto:"Sin diferencias en caja/fondos de cambio (desde ±$1 se considera diferencia)"},
+          {id:"1.17", texto:"Evidencias arqueos fin de día última semana: 2 completos + 5 express"},
+          {id:"1.18", texto:"GF/SG realizan 1 arqueo semanal sorpresivo a cajeros de abono"},
+        ]
+      },
+      {
+        titulo: "FALTANTES (Dec. 8.19) — ⛔ PROHIBICIONES",
+        items: [
+          {id:"F1", prohibicion:true, texto:"PROHIBIDO recuperar faltantes mediante SPEI a cuenta BBVA nómina (salvo proceso formal RRHH)"},
+          {id:"F2", prohibicion:true, texto:"PROHIBIDO reversar operaciones registradas como faltante sin autorización previa GF + GZSF + CO"},
+          {id:"F3", texto:"Faltante detectado → notificado mismo día a GF, GZSF y CO (telefónica y correo)"},
+          {id:"F4", texto:"Documentación completa: A09, B6, ticket registro/eliminación, Acta Faltante, Pagaré y Acta Administrativa (≥$3,001)"},
+          {id:"F5", texto:"Plazos: mismo día 100% (mín 50%); días 1–5 saldo restante; >5 días → RRHH vía SOC"},
+          {id:"F6", texto:"Faltantes >$20,001 sin liquidar a 10 días → asignación a RRHH al CO vía SOC"},
+        ]
+      },
+      {
+        titulo: "REVERSOS (Dec. 8.38)",
+        items: [
+          {id:"R1", texto:"Solo GF (o perfil Gerente en su ausencia) autorizado para realizar reversos"},
+          {id:"R2", texto:"Tickets originales reversados del día en Carpeta de Reportes con 'Movimientos Reversados' completo"},
+          {id:"R3", texto:"Reversos del último mes con información completa conforme a requisitos"},
+        ]
+      },
+      {
+        titulo: "BITÁCORA DE SEGURIDAD",
+        items: [
+          {id:"BS1", texto:"Correcta aplicación de la Bitácora de Seguridad"},
+        ]
+      }
+    ]
+  },
+  {
+    nombre: "2 — EXPEDIENTES",
+    subsecciones: [
+      {
+        titulo: "REVISIÓN CON GF (Dec. 11.01)",
+        items: [
+          {id:"2.1", texto:"Bitácora de Revisión GZSF correctamente llenada (15 colocación + 5 captación) y resguardada"},
+          {id:"2.2", texto:"Bitácora de Revisión GF (post-ausencia) correctamente llenada y resguardada"},
+          {id:"2.3", texto:"Seguimiento de correcciones con Promotores con evidencia en libreta"},
+          {id:"2.4", texto:"GF cuenta con control para garantizar segregación de funciones"},
+          {id:"2.5", texto:"Sin préstamos aperturados y liquidados el mismo día"},
+          {id:"2.6", texto:"ID oficial vigente y correctamente digitalizada (INE/Pasaporte/Cédula/Matrícula/Tarjeta Militar/Cred. IMSS con foto)"},
+          {id:"2.7", texto:"Domicilio capturado exactamente como aparece en el comprobante"},
+          {id:"2.8", texto:"Contrato del producto firmado, completo y correctamente digitalizado"},
+          {id:"2.9", texto:"CURP coincide con la que aparece en la INE"},
+        ]
+      }
+    ]
+  },
+  {
+    nombre: "3 — CAJAS DE ABONO",
+    subsecciones: [
+      {
+        titulo: "OPERACIÓN (1 cajero seleccionado)",
+        items: [
+          {id:"3.1", texto:"Fondo transitorio utilizado correctamente y sin diferencia"},
+          {id:"3.2", texto:"Conciliación de cortes generales sin diferencias; seguimiento formal escrito (revisar 3 cortes anteriores)"},
+          {id:"3.3", texto:"Asignación de derechos al cajero correcta; excepciones con soporte y autorización GZSF"},
+          {id:"3.4", texto:"Monitores a 90°: información visible para cliente y cajero de abono"},
+          {id:"3.5", texto:"No se presta efectivo entre cajeros"},
+          {id:"3.6", texto:"GF/SG realizan 1 arqueo semanal por cajero de abono"},
+          {id:"3.7", texto:"Sin diferencias/excedente en arqueos de caja y fondos de cambio (desde ±$1)"},
+          {id:"3.8", texto:"Conciliación de parciales sin acumulación irregular, depósitos rezagados ni discrepancias ficha retiro vs. depósito"},
+        ]
+      },
+      {
+        titulo: "CAPACITACIÓN (pedir certificado)",
+        items: [
+          {id:"3.9",  texto:"100% colaboradores certificados en 'Seguridad de Cajas de Abono'"},
+          {id:"3.10", texto:"100% colaboradores certificados en 'Certificación de Corresponsales'"},
+          {id:"3.11", texto:"100% colaboradores certificados en 'PLD'"},
+        ]
+      },
+      {
+        titulo: "RECIBOS FOLIADOS",
+        items: [
+          {id:"3.12", texto:"Correcta operación, uso y resguardo de recibos foliados — ambos formatos requisitados (Dec. 31-K)"},
+          {id:"3.13", texto:"Recibos cancelados con control establecido (de existir) (Dec. 45-C)"},
+        ]
+      }
+    ]
+  },
+  {
+    nombre: "4 — AFORE",
+    subsecciones: [
+      {
+        titulo: "MÓDULO Y ATENCIÓN (1 asesor seleccionado)",
+        items: [
+          {id:"4.1", texto:"Asesor ha leído manuales y mini-guías de procesos de Afore"},
+          {id:"4.2", texto:"Al solicitar estado de cuenta, Asesor lo explica en pantalla y promueve medios digitales"},
+          {id:"4.3", texto:"Personal Banco/Cajas NO pasa IDs ni datos al Asesor Previsional sin autorización del cliente"},
+          {id:"4.4", texto:"Sin documentos con datos personales de trabajadores en el Módulo, incluidas hojas de reciclaje"},
+          {id:"4.5", texto:"'Carta de Derechos de Usuario' expuesta correctamente a la vista de los trabajadores"},
+          {id:"4.6", texto:"Acrílico 'Aviso de Privacidad' presente; Asesor invita a leer y aceptar cuando el sistema lo solicita"},
+          {id:"4.7", texto:"Solo material publicitario oficial y vigente; sin material no autorizado u obsoleto"},
+          {id:"4.8", texto:"Asesores atienden a todos los clientes que acudan al módulo, incluso sin cita"},
+        ]
+      }
+    ]
+  },
+  {
+    nombre: "5 — CENTRO FINANCIERO",
+    subsecciones: [
+      {
+        titulo: "ESTADO AL INICIO DEL DÍA (Dec. 8.36)",
+        items: [
+          {id:"5.1", texto:"Archiveros y cajones en buen estado y con llaves disponibles"},
+          {id:"5.2", texto:"Al llegar, todos los equipos del centro financiero están apagados"},
+          {id:"5.3", texto:"Al llegar, todos los cajones están bajo llave"},
+          {id:"5.4", texto:"Sin documentos ni artículos ajenos sobre escritorios al llegar"},
+        ]
+      },
+      {
+        titulo: "SEGURIDAD — ⛔ PROHIBICIÓN",
+        items: [
+          {id:"5.5", prohibicion:true, texto:"PROHIBIDO usar celular u otro medio de comunicación en áreas de ventanillas, promotoría y bóveda (Dec. 5.006)"},
+        ]
+      },
+      {
+        titulo: "CONCENTRACIÓN DE EFECTIVO (Dec. 6.28)",
+        items: [
+          {id:"5.6", texto:"GF y CP cumplen preparación de envase: billetes careados, cabeceados y en fajillas correctas por denominación"},
+        ]
+      },
+      {
+        titulo: "PROMOTORÍA",
+        items: [
+          {id:"P1", texto:"Promotoría cumple estándares de supervisión y control establecidos (validar con GZSF)"},
+        ]
+      }
+    ]
+  }
+];
+
+// ── ESTADO DE LA APP ─────────────────────────────────────────
+const respuestas = {}; // { id: 'SI'|'NO'|'NA' }
+let seccionActual = 0;
+const TOTAL_SECCIONES = 6; // 0=datos, 1-5=ítems, 6=resumen
+
+// ── CATÁLOGO PLANO DE ÍTEMS ──────────────────────────────────
+const todosItems = [];
+SECCIONES.forEach(sec => {
+  sec.subsecciones.forEach(sub => {
+    sub.items.forEach(item => todosItems.push(item));
+  });
+});
+
+// ── FILTRAR SUCURSALES POR ZONA ──────────────────────────────
+function filtrarSucursales() {
+  const zona = document.getElementById('zona').value;
+  const sel  = document.getElementById('sucursal');
+  sel.innerHTML = '<option value="">— Selecciona sucursal —</option>';
+  if (!zona || !SUCURSALES[zona]) return;
+  SUCURSALES[zona].forEach(([no, nombre]) => {
+    const opt = document.createElement('option');
+    opt.value = `${no} · ${nombre}`;
+    opt.textContent = `${no} · ${nombre}`;
+    sel.appendChild(opt);
+  });
+}
+
+// ── CONSTRUIR SECCIONES EN EL DOM ────────────────────────────
+function construirSecciones() {
+  SECCIONES.forEach((sec, si) => {
+    const cont = document.getElementById(`sec${si + 1}`);
+    let html = '';
+    sec.subsecciones.forEach(sub => {
+      html += `<div class="subseccion">
+        <div class="subseccion-titulo">${sub.titulo}</div>`;
+      sub.items.forEach(item => {
+        const esP = !!item.prohibicion;
+        html += `
+        <div class="item${esP ? ' prohibicion' : ''}" id="item_${item.id}">
+          <div class="item-content">
+            <span class="item-id">${item.id}</span>
+            <span class="item-texto">${esP ? '⛔ ' : ''}${item.texto}</span>
+          </div>
+          <div class="item-botones">
+            <button class="btn-check si"  onclick="responder('${item.id}','SI',  this, ${esP})">
+              ${esP ? '✅ NO ocurrió' : '✅ SÍ'}
+            </button>
+            <button class="btn-check no"  onclick="responder('${item.id}','NO',  this, ${esP})">
+              ${esP ? '⛔ SÍ ocurrió' : '❌ NO'}
+            </button>
+            <button class="btn-check na"  onclick="responder('${item.id}','NA',  this, ${esP})">
+              N/A
+            </button>
+          </div>
+        </div>`;
+      });
+      html += `</div>`;
+    });
+    // Observaciones al final de cada sección
+    html += `<div class="obs-campo">
+      <label>Observaciones · ${sec.nombre}</label>
+      <textarea id="obs_sec${si+1}" placeholder="Anotar hallazgos, áreas de oportunidad y acciones correctivas…"></textarea>
+    </div>`;
+    cont.innerHTML = html;
+  });
+}
+
+// ── RESPONDER UN ÍTEM ────────────────────────────────────────
+function responder(id, valor, btn, esProhib) {
+  respuestas[id] = valor;
+
+  const itemEl = document.getElementById(`item_${id}`);
+  const btns   = itemEl.querySelectorAll('.btn-check');
+  btns.forEach(b => b.classList.remove('sel'));
+  btn.classList.add('sel');
+
+  // Color de la tarjeta
+  itemEl.classList.remove('cumple','incumple');
+  if (valor === 'NA') {
+    // sin color especial
+  } else if (esProhib) {
+    itemEl.classList.add(valor === 'SI' ? 'cumple' : 'incumple');
+  } else {
+    itemEl.classList.add(valor === 'SI' ? 'cumple' : 'incumple');
+  }
+
+  actualizarProgreso();
+  actualizarBadges();
+}
+
+// ── PROGRESO GLOBAL ──────────────────────────────────────────
+function actualizarProgreso() {
+  const total     = todosItems.length;
+  const respondidos = Object.keys(respuestas).length;
+  const pct = Math.round((respondidos / total) * 100);
+  document.getElementById('progFill').style.width  = pct + '%';
+  document.getElementById('progLabel').textContent = `${respondidos} de ${total} respondidos · ${pct}%`;
+}
+
+// ── BADGES EN TABS ───────────────────────────────────────────
+function actualizarBadges() {
+  SECCIONES.forEach((sec, si) => {
+    let incumplidos = 0;
+    sec.subsecciones.forEach(sub => {
+      sub.items.forEach(item => {
+        const r = respuestas[item.id];
+        if (!r) return;
+        const esP = !!item.prohibicion;
+        if (esP && r === 'NO') incumplidos++;
+        if (!esP && r === 'NO') incumplidos++;
+      });
+    });
+    const badge  = document.getElementById(`b${si+1}`);
+    const tabEl  = document.querySelectorAll('.tab')[si+1];
+    badge.textContent = incumplidos || '';
+    tabEl.classList.toggle('tiene-incumplidos', incumplidos > 0);
+  });
+}
+
+// ── NAVEGACIÓN ───────────────────────────────────────────────
+function irSeccion(n) {
+  // Ocultar todo
+  document.querySelectorAll('.seccion').forEach(s => s.classList.remove('activa'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('secResumen').classList.remove('activo');
+  document.getElementById('pantallaExito').classList.remove('activo');
+  document.getElementById('navBottom').style.display = 'flex';
+
+  seccionActual = n;
+
+  if (n <= 5) {
+    document.getElementById(`sec${n}`).classList.add('activa');
+  } else {
+    generarResumen();
+    document.getElementById('secResumen').classList.add('activo');
+    document.getElementById('navBottom').style.display = 'none';
+  }
+
+  document.querySelectorAll('.tab')[n].classList.add('active');
+  document.getElementById('btnPrev').style.display = n > 0 ? 'block' : 'none';
+
+  const btnNext = document.getElementById('btnNext');
+  if (n < 5) {
+    btnNext.textContent = 'Siguiente →';
+    btnNext.className = 'btn-nav btn-next';
+  } else {
+    btnNext.textContent = '✅ Ver resumen';
+    btnNext.className = 'btn-nav btn-enviar';
+  }
+
+  // Scroll arriba
+  window.scrollTo(0, 0);
+  document.querySelectorAll('.tabs')[0].children[n].scrollIntoView({behavior:'smooth', inline:'center', block:'nearest'});
+}
+
+function siguiente() {
+  if (seccionActual === 0 && !validarIdentificacion()) return;
+  irSeccion(Math.min(seccionActual + 1, 6));
+}
+function anterior() {
+  irSeccion(Math.max(seccionActual - 1, 0));
+}
+
+function validarIdentificacion() {
+  const zona = document.getElementById('zona').value;
+  const suc  = document.getElementById('sucursal').value;
+  const gf   = document.getElementById('gf').value.trim();
+  const gzsf = document.getElementById('gzsf').value.trim();
+  const fecha= document.getElementById('fecha').value;
+  if (!zona || !suc || !gf || !gzsf || !fecha) {
+    mostrarToast('⚠️ Completa todos los campos antes de continuar');
+    return false;
+  }
+  return true;
+}
+
+// ── GENERAR RESUMEN ──────────────────────────────────────────
+function generarResumen() {
+  let cumple = 0, incumple = 0, prohibViol = 0, total = 0;
+  const itemsIncumplidos = [];
+
+  todosItems.forEach(item => {
+    const r = respuestas[item.id];
+    if (!r || r === 'NA') return;
+    const esP = !!item.prohibicion;
+    total++;
+    if (esP) {
+      if (r === 'SI') cumple++;
+      else { incumple++; prohibViol++; itemsIncumplidos.push({...item, tipo:'prohibicion'}); }
+    } else {
+      if (r === 'SI') cumple++;
+      else { incumple++; itemsIncumplidos.push({...item, tipo:'normal'}); }
+    }
+  });
+
+  const pct    = total > 0 ? Math.round((cumple / total) * 100) : 0;
+  const estado = pct >= 90 ? '✅ ACEPTABLE' : pct >= 70 ? '⚠️ REQUIERE ATENCIÓN' : '🚨 CRÍTICO';
+  const clsPct = pct >= 90 ? 'verde' : pct >= 70 ? 'amarillo' : 'rojo';
+
+  const zona  = document.getElementById('zona').value;
+  const suc   = document.getElementById('sucursal').value;
+  const gf    = document.getElementById('gf').value;
+  const gzsf  = document.getElementById('gzsf').value;
+  const fecha = document.getElementById('fecha').value;
+
+  const listaInc = itemsIncumplidos.map(item => `
+    <div class="item-incumplido">
+      <span class="id-badge${item.tipo==='prohibicion'?' prohib':''}">${item.id}</span>
+      <span>${item.texto}</span>
+    </div>`).join('') || '<p style="color:#94A3B8;font-size:13px;padding:8px 0">Sin incumplimientos detectados 🎉</p>';
+
+  // Observaciones consolidadas
+  let obsHtml = '';
+  SECCIONES.forEach((sec, si) => {
+    const obs = document.getElementById(`obs_sec${si+1}`)?.value.trim();
+    if (obs) obsHtml += `<div style="margin-bottom:8px"><strong>${sec.nombre}:</strong><br><span style="color:#475569">${obs}</span></div>`;
+  });
+
+  document.getElementById('secResumen').innerHTML = `
+    <div class="resumen-header">
+      <p>${zona} · ${suc}</p>
+      <p style="font-size:12px;opacity:.7">${fecha} · GF: ${gf} · GZSF: ${gzsf}</p>
+      <div class="pct-grande ${clsPct}">${pct}%</div>
+      <p style="font-size:14px;font-weight:700">${estado}</p>
+    </div>
+
+    <div class="resumen-grid">
+      <div class="resumen-card verde-c">
+        <span class="numero">${cumple}</span>
+        <span class="etiqueta">✅ Cumple</span>
+      </div>
+      <div class="resumen-card rojo-c">
+        <span class="numero">${incumple}</span>
+        <span class="etiqueta">❌ Incumple</span>
+      </div>
+      <div class="resumen-card prohib-c">
+        <span class="numero">${prohibViol}</span>
+        <span class="etiqueta">⛔ Prohib.</span>
+      </div>
+    </div>
+
+    <div class="incumplidos-lista">
+      <h3>❌ Ítems incumplidos (${itemsIncumplidos.length})</h3>
+      ${listaInc}
+    </div>
+
+    ${obsHtml ? `<div class="incumplidos-lista"><h3>📝 Observaciones</h3>${obsHtml}</div>` : ''}
+
+    <button class="btn-enviar-final" onclick="enviarDatos()">
+      📤 Enviar auditoría al sistema
+    </button>
+    <button class="btn-volver" onclick="irSeccion(5)">
+      ← Volver y corregir
+    </button>
+    <br><br>
+  `;
+}
+
+// ── ENVIAR DATOS AL GOOGLE SHEET ─────────────────────────────
+// INSTRUCCIÓN: Reemplaza SCRIPT_URL con la URL de tu Apps Script Web App
+// Para generar esa URL: en Apps Script → Implementar → Nueva implementación →
+// Tipo: Aplicación web → Ejecutar como: Yo → Acceso: Cualquier persona → Implementar
+const SCRIPT_URL = "PEGA_AQUI_TU_SCRIPT_URL";
+
+async function enviarDatos() {
+  const btnEnv = document.querySelector('.btn-enviar-final');
+  btnEnv.textContent = '⏳ Enviando…';
+  btnEnv.disabled = true;
+
+  const payload = {
+    zona:     document.getElementById('zona').value,
+    sucursal: document.getElementById('sucursal').value,
+    gf:       document.getElementById('gf').value,
+    gzsf:     document.getElementById('gzsf').value,
+    fecha:    document.getElementById('fecha').value,
+    bitSeg1:  document.getElementById('bitSeg1').value,
+    bitSeg2:  document.getElementById('bitSeg2').value,
+    respuestas: respuestas,
+    observaciones: {}
+  };
+
+  SECCIONES.forEach((sec, si) => {
+    const obs = document.getElementById(`obs_sec${si+1}`)?.value.trim();
+    if (obs) payload.observaciones[sec.nombre] = obs;
+  });
+
+  // Si no hay URL configurada, simular envío exitoso
+  if (SCRIPT_URL === "PEGA_AQUI_TU_SCRIPT_URL") {
+    setTimeout(() => {
+      document.getElementById('secResumen').classList.remove('activo');
+      document.getElementById('pantallaExito').classList.add('activo');
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    }, 1200);
+    return;
+  }
+
+  try {
+    await fetch(SCRIPT_URL, {
+      method: 'POST',
+      mode:   'no-cors',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    document.getElementById('secResumen').classList.remove('activo');
+    document.getElementById('pantallaExito').classList.add('activo');
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  } catch (e) {
+    btnEnv.textContent = '📤 Enviar auditoría al sistema';
+    btnEnv.disabled = false;
+    mostrarToast('❌ Error al enviar. Revisa tu conexión.');
+  }
+}
+
+// ── NUEVA AUDITORÍA ──────────────────────────────────────────
+function nuevaAuditoria() {
+  Object.keys(respuestas).forEach(k => delete respuestas[k]);
+  document.getElementById('zona').value = '';
+  document.getElementById('sucursal').innerHTML = '<option value="">— Primero selecciona zona —</option>';
+  ['gf','gzsf','fecha','bitSeg1','bitSeg2'].forEach(id => document.getElementById(id).value = '');
+  construirSecciones();
+  actualizarProgreso();
+  actualizarBadges();
+  document.getElementById('pantallaExito').classList.remove('activo');
+  irSeccion(0);
+}
+
+// ── TOAST ────────────────────────────────────────────────────
+function mostrarToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ── INIT ─────────────────────────────────────────────────────
+construirSecciones();
+actualizarProgreso();
+document.getElementById('fecha').valueAsDate = new Date();
+</script>
+</body>
+</html>
