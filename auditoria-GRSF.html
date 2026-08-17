@@ -867,24 +867,50 @@ function construirSecciones() {
   });
 }
 
+// ── OBSERVACIONES POR ÍTEM ───────────────────────────────────
+const obsItems = {};
+
 // ── RESPONDER UN ÍTEM ────────────────────────────────────────
 function responder(id, valor, btn, esProhib) {
   respuestas[id] = valor;
 
-  const itemEl = document.getElementById(`item_${id}`);
+  const itemEl = document.getElementById('item_' + id);
   const btns   = itemEl.querySelectorAll('.btn-check');
   btns.forEach(b => b.classList.remove('sel'));
   btn.classList.add('sel');
 
   // Color de la tarjeta
   itemEl.classList.remove('cumple','incumple');
-  if (valor === 'NA') {
-    // sin color especial
-  } else if (esProhib) {
-    itemEl.classList.add(valor === 'SI' ? 'cumple' : 'incumple');
-  } else {
-    itemEl.classList.add(valor === 'SI' ? 'cumple' : 'incumple');
+  if (valor === 'SI' && !esProhib) itemEl.classList.add('cumple');
+  else if (valor === 'NO' && !esProhib) itemEl.classList.add('incumple');
+  else if (valor === 'SI' && esProhib)  itemEl.classList.add('cumple');
+  else if (valor === 'NO' && esProhib)  itemEl.classList.add('incumple');
+
+  // Campo de observación obligatorio cuando NO o NA
+  let obsDiv = itemEl.querySelector('.obs-item');
+  const necesitaObs = (valor === 'NO' || valor === 'NA');
+
+  if (necesitaObs && !obsDiv) {
+    obsDiv = document.createElement('div');
+    obsDiv.className = 'obs-item';
+    const etiqueta = valor === 'NO'
+      ? (esProhib ? '\u26d4 Describe la situaci\u00f3n encontrada (obligatorio):' : '\u274c Motivo del incumplimiento (obligatorio):')
+      : '\ud83d\udcdd Motivo de N/A (obligatorio):';
+    obsDiv.innerHTML =
+      '<div style="padding:0 12px 10px">' +
+      '<label style="font-size:11px;font-weight:700;color:#B91C1C;display:block;margin-bottom:4px">' + etiqueta + '</label>' +
+      '<textarea id="obs_item_' + id + '" placeholder="Describe brevemente la situaci\u00f3n o motivo\u2026"' +
+      ' onchange="obsItems['' + id + ''] = this.value" oninput="obsItems['' + id + ''] = this.value"' +
+      ' style="width:100%;border:1.5px solid #FCA5A5;border-radius:8px;padding:8px;' +
+      'font-size:13px;font-family:inherit;min-height:60px;resize:vertical;background:#FFF5F5;outline:none"></textarea>' +
+      '</div>';
+    itemEl.appendChild(obsDiv);
+  } else if (!necesitaObs && obsDiv) {
+    obsDiv.remove();
+    delete obsItems[id];
   }
+
+  if (valor === 'SI') delete obsItems[id];
 
   actualizarProgreso();
   actualizarBadges();
@@ -957,7 +983,85 @@ function irSeccion(n) {
 
 function siguiente() {
   if (seccionActual === 0 && !validarIdentificacion()) return;
+  // Al intentar ir al resumen, validar ítems sin responder
+  if (seccionActual === 5) {
+    const pendientes = todosItems.filter(item => !respuestas[item.id]);
+    if (pendientes.length > 0) {
+      mostrarModalPendientes(pendientes);
+      return;
+    }
+    // Validar que NO y NA tengan observación
+    const sinObs = todosItems.filter(item => {
+      const r = respuestas[item.id];
+      return (r === 'NO' || r === 'NA') && !obsItems[item.id];
+    });
+    if (sinObs.length > 0) {
+      mostrarToast('\u26a0\ufe0f ' + sinObs.length + ' ítem(s) con NO o N/A requieren observación');
+      // Resaltar campos vacíos
+      sinObs.forEach(item => {
+        const ta = document.getElementById('obs_item_' + item.id);
+        if (ta) { ta.style.border = '2px solid #EF4444'; ta.focus(); }
+      });
+      return;
+    }
+  }
   irSeccion(Math.min(seccionActual + 1, 6));
+}
+
+// ── MODAL DE ÍTEMS PENDIENTES ─────────────────────────────────
+function mostrarModalPendientes(pendientes) {
+  // Agrupar por sección
+  const grupos = {};
+  pendientes.forEach(item => {
+    SECCIONES.forEach((sec, si) => {
+      sec.subsecciones.forEach(sub => {
+        if (sub.items.find(i => i.id === item.id)) {
+          if (!grupos[sec.nombre]) grupos[sec.nombre] = { sec: si+1, items: [] };
+          grupos[sec.nombre].items.push(item);
+        }
+      });
+    });
+  });
+
+  let listaHTML = '';
+  Object.entries(grupos).forEach(([secNombre, g]) => {
+    listaHTML += '<div style="margin-bottom:10px">';
+    listaHTML += '<div style="font-size:11px;font-weight:700;color:#1B3A6B;text-transform:uppercase;margin-bottom:4px">' + secNombre + '</div>';
+    g.items.forEach(item => {
+      listaHTML += '<div style="display:flex;gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px solid #EEE;font-size:12px">' +
+        '<span style="background:#FEE2E2;color:#B91C1C;font-weight:700;font-size:10px;padding:2px 6px;border-radius:4px;flex-shrink:0">' + item.id + '</span>' +
+        '<span>' + item.texto.substring(0, 60) + (item.texto.length > 60 ? '…' : '') + '</span>' +
+        '</div>';
+    });
+    listaHTML += '</div>';
+  });
+
+  const modal = document.createElement('div');
+  modal.id = 'modalPendientes';
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:9999;display:flex;align-items:flex-end;padding:0';
+  modal.innerHTML =
+    '<div style="background:white;border-radius:20px 20px 0 0;width:100%;max-height:80vh;overflow-y:auto;padding:20px">' +
+    '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">' +
+    '<div>' +
+    '<div style="font-size:16px;font-weight:800;color:#B91C1C">⚠️ ' + pendientes.length + ' ítems sin responder</div>' +
+    '<div style="font-size:12px;color:#64748B;margin-top:2px">Estos ítems quedarán como omitidos y se reportará al Gerente de Zona</div>' +
+    '</div>' +
+    '<button onclick="document.getElementById('modalPendientes').remove()" style="background:#F1F5F9;border:none;border-radius:8px;padding:8px 12px;font-size:13px;cursor:pointer">✕</button>' +
+    '</div>' +
+    '<div style="margin-bottom:14px">' + listaHTML + '</div>' +
+    '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">' +
+    '<button onclick="document.getElementById('modalPendientes').remove()" ' +
+    'style="padding:12px;background:#1B3A6B;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">← Volver a completar</button>' +
+    '<button onclick="document.getElementById('modalPendientes').remove(); forzarResumen()" ' +
+    'style="padding:12px;background:#EF4444;color:white;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer">Enviar de todas formas ⚠️</button>' +
+    '</div>' +
+    '</div>';
+  document.body.appendChild(modal);
+}
+
+function forzarResumen() {
+  // Marcar pendientes como omitidos en el payload pero permitir continuar
+  irSeccion(6);
 }
 function anterior() {
   irSeccion(Math.max(seccionActual - 1, 0));
@@ -980,18 +1084,27 @@ function validarIdentificacion() {
 function generarResumen() {
   let cumple = 0, incumple = 0, prohibViol = 0, total = 0;
   const itemsIncumplidos = [];
+  const itemsOmitidos    = [];
+  const itemsNA          = [];
 
   todosItems.forEach(item => {
     const r = respuestas[item.id];
-    if (!r || r === 'NA') return;
     const esP = !!item.prohibicion;
+    if (!r) {
+      itemsOmitidos.push(item);
+      return;
+    }
+    if (r === 'NA') {
+      itemsNA.push({...item, obs: obsItems[item.id] || ''});
+      return;
+    }
     total++;
     if (esP) {
       if (r === 'SI') cumple++;
-      else { incumple++; prohibViol++; itemsIncumplidos.push({...item, tipo:'prohibicion'}); }
+      else { incumple++; prohibViol++; itemsIncumplidos.push({...item, tipo:'prohibicion', obs: obsItems[item.id] || ''}); }
     } else {
       if (r === 'SI') cumple++;
-      else { incumple++; itemsIncumplidos.push({...item, tipo:'normal'}); }
+      else { incumple++; itemsIncumplidos.push({...item, tipo:'normal', obs: obsItems[item.id] || ''}); }
     }
   });
 
@@ -1018,51 +1131,35 @@ function generarResumen() {
     if (obs) obsHtml += `<div style="margin-bottom:8px"><strong>${sec.nombre}:</strong><br><span style="color:#475569">${obs}</span></div>`;
   });
 
-  document.getElementById('secResumen').innerHTML = `
-    <div class="resumen-header">
-      <p>${zona} · ${suc}</p>
-      <p style="font-size:12px;opacity:.7">${fecha} · GF: ${gf} · GZSF: ${gzsf}</p>
-      <div class="pct-grande ${clsPct}">${pct}%</div>
-      <p style="font-size:14px;font-weight:700">${estado}</p>
-    </div>
-
-    <div class="resumen-grid">
-      <div class="resumen-card verde-c">
-        <span class="numero">${cumple}</span>
-        <span class="etiqueta">✅ Cumple</span>
-      </div>
-      <div class="resumen-card rojo-c">
-        <span class="numero">${incumple}</span>
-        <span class="etiqueta">❌ Incumple</span>
-      </div>
-      <div class="resumen-card prohib-c">
-        <span class="numero">${prohibViol}</span>
-        <span class="etiqueta">⛔ Prohib.</span>
-      </div>
-    </div>
-
-    <div class="incumplidos-lista">
-      <h3>❌ Ítems incumplidos (${itemsIncumplidos.length})</h3>
-      ${listaInc}
-    </div>
-
-    ${obsHtml ? `<div class="incumplidos-lista"><h3>📝 Observaciones</h3>${obsHtml}</div>` : ''}
-
-    <button class="btn-enviar-final" onclick="enviarDatos()">
-      📤 Enviar auditoría al sistema
-    </button>
-    <button class="btn-volver" onclick="irSeccion(5)">
-      ← Volver y corregir
-    </button>
-    <br><br>
-  `;
+  document.getElementById('secResumen').innerHTML =
+    '<div class="resumen-header">' +
+    '<p>' + zona + ' · ' + suc + '</p>' +
+    '<p style="font-size:12px;opacity:.7">' + fecha + ' · GF: ' + gf + ' · GZSF: ' + gzsf + '</p>' +
+    '<div class="pct-grande ' + clsPct + '">' + pct + '%</div>' +
+    '<p style="font-size:14px;font-weight:700">' + estado + '</p>' +
+    (itemsOmitidos.length > 0 ? '<div style="background:#FEF3C7;border-radius:8px;padding:8px 12px;margin-top:10px;font-size:12px;font-weight:600;color:#B7791F">⚠️ ' + itemsOmitidos.length + ' ítems sin respuesta — notificado al Gerente de Zona</div>' : '') +
+    '</div>' +
+    '<div class="resumen-grid">' +
+    '<div class="resumen-card verde-c"><span class="numero">' + cumple + '</span><span class="etiqueta">✅ Cumple</span></div>' +
+    '<div class="resumen-card rojo-c"><span class="numero">' + incumple + '</span><span class="etiqueta">❌ Incumple</span></div>' +
+    '<div class="resumen-card prohib-c"><span class="numero">' + prohibViol + '</span><span class="etiqueta">⛔ Prohib.</span></div>' +
+    '</div>' +
+    '<div class="incumplidos-lista">' +
+    '<h3>❌ Ítems incumplidos (' + itemsIncumplidos.length + ')</h3>' +
+    listaInc +
+    '</div>' +
+    listaOmit +
+    (obsHtml ? '<div class="incumplidos-lista"><h3>\ud83d\udcdd Observaciones generales</h3>' + obsHtml + '</div>' : '') +
+    '<button class="btn-enviar-final" onclick="enviarDatos()">\ud83d\udce4 Enviar auditoría al sistema</button>' +
+    '<button class="btn-volver" onclick="irSeccion(5)">\u2190 Volver y corregir</button>' +
+    '<br><br>';
 }
 
 // ── ENVIAR DATOS AL GOOGLE SHEET ─────────────────────────────
 // INSTRUCCIÓN: Reemplaza SCRIPT_URL con la URL de tu Apps Script Web App
 // Para generar esa URL: en Apps Script → Implementar → Nueva implementación →
 // Tipo: Aplicación web → Ejecutar como: Yo → Acceso: Cualquier persona → Implementar
-const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDxzhVMVJxrXQiRe7pySE94UUumpJ4zg9UI1_pEtr7GVQsJ0WeNvJLIVtdQSpX0XYgkw/exec";
+const SCRIPT_URL = "PEGA_AQUI_TU_SCRIPT_URL";
 
 async function enviarDatos() {
   const btnEnv = document.querySelector('.btn-enviar-final');
@@ -1078,16 +1175,19 @@ async function enviarDatos() {
     bitSeg1:  document.getElementById('bitSeg1').value,
     bitSeg2:  document.getElementById('bitSeg2').value,
     respuestas: respuestas,
-    observaciones: {}
+    observaciones: {},
+    observacionesItems: obsItems,
+    itemsOmitidos: todosItems.filter(i => !respuestas[i.id]).map(i => i.id)
   };
 
   SECCIONES.forEach((sec, si) => {
-    const obs = document.getElementById(`obs_sec${si+1}`)?.value.trim();
+    const el = document.getElementById('obs_sec' + (si+1));
+    const obs = el ? el.value.trim() : '';
     if (obs) payload.observaciones[sec.nombre] = obs;
   });
 
   // Si no hay URL configurada, simular envío exitoso
-  if (SCRIPT_URL === "https://script.google.com/macros/s/AKfycbyDxzhVMVJxrXQiRe7pySE94UUumpJ4zg9UI1_pEtr7GVQsJ0WeNvJLIVtdQSpX0XYgkw/exec") {
+  if (SCRIPT_URL === "PEGA_AQUI_TU_SCRIPT_URL") {
     setTimeout(() => {
       document.getElementById('secResumen').classList.remove('activo');
       document.getElementById('pantallaExito').classList.add('activo');
