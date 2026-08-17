@@ -1062,7 +1062,7 @@ function generarResumen() {
 // INSTRUCCIÓN: Reemplaza SCRIPT_URL con la URL de tu Apps Script Web App
 // Para generar esa URL: en Apps Script → Implementar → Nueva implementación →
 // Tipo: Aplicación web → Ejecutar como: Yo → Acceso: Cualquier persona → Implementar
-const SCRIPT_URL = "PEGA_AQUI_TU_SCRIPT_URL";
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbyDxzhVMVJxrXQiRe7pySE94UUumpJ4zg9UI1_pEtr7GVQsJ0WeNvJLIVtdQSpX0XYgkw/exec";
 
 async function enviarDatos() {
   const btnEnv = document.querySelector('.btn-enviar-final');
@@ -1087,7 +1087,7 @@ async function enviarDatos() {
   });
 
   // Si no hay URL configurada, simular envío exitoso
-  if (SCRIPT_URL === "PEGA_AQUI_TU_SCRIPT_URL") {
+  if (SCRIPT_URL === "https://script.google.com/macros/s/AKfycbyDxzhVMVJxrXQiRe7pySE94UUumpJ4zg9UI1_pEtr7GVQsJ0WeNvJLIVtdQSpX0XYgkw/exec") {
     setTimeout(() => {
       document.getElementById('secResumen').classList.remove('activo');
       document.getElementById('pantallaExito').classList.add('activo');
